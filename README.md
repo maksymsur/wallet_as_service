@@ -4,13 +4,13 @@
 
 The WAAS project is a Blockchain wallet-as-a-service application built using Rust and the Actix-Web framework. The service includes functionalities for generating cryptographic keys, signing messages, and securely forgetting keys. 
 
-**Architecture**: The implementation is modular, comprising multiple components such as handlers, secure key management, and utility functions. That is done intentionally as a good basis for further development/testing by a team.
+**Architecture**: The implementation is modular, comprising multiple components such as handlers, secure key management, and utility functions. That is done intentionally as a good basis to foster further project development/testing by a team.
 
 **Storage**: Security, code quality, and efficiency are emphasized, with an in-memory database (Sled) used to manage key storage. This is chosen as a quick in-RAM storage solution that shall be changed into more robust production-grade DB like PostgreSQL or smth like YugabyteDB (in case we need a multi-sharded horizontal scaling capabilities).
 
 **Auth capabilities**: Bearer Token Authentication is implemented using `actix-web-httpauth`, this middleware ensures that only authorized users can access the core endpoints (`/generate-key`, `/sign-message`, `/forget-key`). The token is compared against an environment variable or a default value. This simple form of authentication is effective for a proof of concept but needs to be strengthened for production environments.
 
-**Key Management**: SafeSecretKey Abstraction wraps around the secp256k1::SecretKey, ensuring that sensitive cryptographic material is securely handled and zeroized upon drop. This approach demonstrates an awareness of the critical need to protect sensitive data from lingering in memory. That also lays some ground for future expendability and key management depending on project development.
+**Key Management**: SafeSecretKey abstraction wraps around the secp256k1::SecretKey, ensuring that sensitive cryptographic material is securely handled and zeroized upon drop. This approach demonstrates an awareness of the critical need to protect sensitive data from lingering in memory. That also lays some good ground for future expendability and key management depending on project development.
 
 **Error Handling**: Custom Error Types like `AppError` and `SafeSecretKeyError` provide robust error categorization and response generation. Each error type is mapped to appropriate HTTP responses, enhancing the clarity and maintainability of error-handling logic.
 
@@ -45,19 +45,19 @@ Test completed successfully!
 
 ## Ideas for Improvement
 
-**Enhanced Security:** Instead of a static Bearer Token, we might consider integrating OAuth2, JWT (JSON Web Tokens), or even mutual TLS for more secure authentication. Database Encryption: While Sled is in-memory, we also might want to consider adding an encryption layer for stored data, especially if moving to persistent storage in production.
+**Enhanced Security:** Instead of a static Bearer Token, we might consider integrating OAuth2, JWT (JSON Web Tokens), or even mutual TLS for more secure authentication. While Sled is in-memory, we also might want to consider adding an encryption layer for stored data, especially if moving to persistent storage in production.
 
-**Scalability & Persistence:** Transition from an in-memory database to a persistent store like PostgreSQL or a distributed key-value store (e.g., Redis). This would allow for scaling out the service and persisting keys across service restarts. 
+**Scalability & Persistence:** Transition from an in-memory database to a persistent store like PostgreSQL or a distributed key-value store (e.g., Redis) will allow for scaling out the service and persisting keys across service restarts. 
 
 **Key Rotation & Expiry:** We also may implement key rotation policies and expiry mechanisms to ensure keys are not used indefinitely, enhancing security.
 
-**Logging & Monitoring:** We need to enhance logging and implement tracing along with external monitoring tools like Prometheus, Jaeger, etc. Profiling and flame-charts allow better insight into the service's runtime performance and user behavior.
+**Logging & Monitoring:** We need to enhance logging and implement tracing along with introduction of external monitoring tools like Prometheus, Jaeger, etc.
 
-**Performance Optimization + Profiling & Flame-charts:** We need to systematically review all multi-threaded, async, I/O-bound operations (e.g., database access, cryptographic operations) and ensure they are fully asynchronous to prevent blocking the Actix-Web threads. Implement load testing to identify and address performance bottlenecks.
+**Performance Optimization + Profiling & Flame-charts:** We need to systematically review all multi-threaded, async, I/O-bound operations (e.g., database access, cryptographic operations) and ensure they are fully asynchronous to prevent blocking the Actix-Web threads. Implement load testing to identify and address performance bottlenecks. Profiling and flame-charts allow better insight into the service's runtime performance and user behavior.
 
-**Deployment Considerations:** Containerize the application using Docker to simplify deployment and ensure consistency across environments. CI/CD Pipeline: Set up continuous integration and delivery pipelines to automate testing, building, and deployment.
+**Deployment Considerations:** We also need to containerize the application using Docker to simplify deployment and ensure consistency across environments. CI/CD Pipeline shall be set up allowing continuous integration and delivery + automate testing, building, and deployment.
 
-**Improving the Secure Key Handling:** For high-security environments, consider integrating with HSMs or using Rust libraries that interface with such modules for key generation and management. While zeroizing memory is critical, we also might consider additional safeguards like memory locking (using libraries like `mlock`) to prevent sensitive data from being swapped out to disk.
+**Improving the Secure Key Handling:** For high-security environments we might consider integrating with HSMs or using Rust libraries that interface with such modules for key generation and management. While zeroizing memory is critical, we also might consider additional safeguards like memory locking (using libraries like `mlock`) to prevent sensitive data from being swapped out to disk.
 
 ## Licenses & Vulnerabilities Checks
 
