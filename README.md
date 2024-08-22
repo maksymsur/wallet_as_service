@@ -1,8 +1,8 @@
-# Wallet as a service (WAAS) ad-hoc project
+# Wallet as a service (WAAS) ad-hoc project to test some concepts for safe keys custom management
 
 ## Description
 
-The WAAS project is a Blockchain wallet-as-a-service application built using Rust and the Actix-Web framework. The service includes functionalities for generating cryptographic keys, signing messages, and securely forgetting keys. 
+The WAAS project is a Blockchain backend wallet-as-a-service application built using Rust and the Actix-Web framework. The service includes functionalities for generating cryptographic keys, signing messages, and securely forgetting keys. 
 
 **Architecture**: The implementation is modular, comprising multiple components such as handlers, secure key management, and utility functions. That is done intentionally as a good basis to foster further project development/testing by a team.
 
