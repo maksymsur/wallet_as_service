@@ -1,63 +1,91 @@
-# Wallet as a service (WAAS) ad-hoc project
+# Multi-Party ECDSA Key Generation and Signing
 
-## Description
+This project implements a multi-party ECDSA (Elliptic Curve Digital Signature Algorithm) key generation and signing protocol based on the GG20 scheme. It provides a distributed way to generate and manage ECDSA keys, as well as create signatures without any single party having access to the full private key.
 
-The WAAS project is a Blockchain wallet-as-a-service application built using Rust and the Actix-Web framework. The service includes functionalities for generating cryptographic keys, signing messages, and securely forgetting keys. 
+## Overview
 
-**Architecture**: The implementation is modular, comprising multiple components such as handlers, secure key management, and utility functions. That is done intentionally as a good basis to foster further project development/testing by a team.
+This implementation allows multiple parties to collaboratively generate an ECDSA key pair and create signatures without revealing their individual secret shares. It uses a threshold scheme, where a specified number of parties must participate to complete the signing process.
 
-**Storage**: Security, code quality, and efficiency are emphasized, with an in-memory database (Sled) used to manage key storage. This is chosen as a quick in-RAM storage solution that shall be changed into more robust production-grade DB like PostgreSQL or smth like YugabyteDB (in case we need a multi-sharded horizontal scaling capabilities).
+## Features
 
-**Auth capabilities**: Bearer Token Authentication is implemented using `actix-web-httpauth`, this middleware ensures that only authorized users can access the core endpoints (`/generate-key`, `/sign-message`, `/forget-key`). The token is compared against an environment variable or a default value. This simple form of authentication is effective for a proof of concept but needs to be strengthened for production environments.
+- Distributed ECDSA key generation
+- Threshold-based multi-party signing
+- Secure communication between parties
+- State machine management for coordinating the protocol
+- Paillier key validation for enhanced security
 
-**Key Management**: SafeSecretKey abstraction wraps around the secp256k1::SecretKey, ensuring that sensitive cryptographic material is securely handled and zeroized upon drop. This approach demonstrates an awareness of the critical need to protect sensitive data from lingering in memory. That also lays some good ground for future expendability and key management depending on project development.
+## Components
 
-**Error Handling**: Custom Error Types like `AppError` and `SafeSecretKeyError` provide robust error categorization and response generation. Each error type is mapped to appropriate HTTP responses, enhancing the clarity and maintainability of error-handling logic.
+The project consists of several main components:
 
-## How to test
+1. `gg20_keygen`: Handles the distributed key generation process
+2. `gg20_signing`: Implements the multi-party signing protocol
+3. `gg20_sm_manager`: Manages the state machine and communication between parties
+4. `gg20_sm_client`: Provides client-side functionality for connecting to the state machine manager
+5. `paillier_validator`: Validates Paillier keys to prevent potential vulnerabilities
 
-1. open 2 terminal windows
-2. execute in the first window `RUST_LOG=info cargo run` and you'll see smth like this:
+## Installation
+
+To install and set up the project, follow these steps:
+
+1. Ensure you have Rust and Cargo installed on your system.
+2. Clone the repository:
+
+```bash
+git clone https://github.com/your-repo/multi-party-ecdsa.git
+cd multi-party-ecdsa
 ```
-❯ RUST_LOG=info cargo run
-   Compiling wallet_as_service v0.1.0 (/home/maksym/Desktop/wallet_as_service)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 8.79s                                                                            
-     Running `target/debug/wallet_as_service`
-[2024-08-21T16:11:47Z INFO  wallet_as_service] Server starting at http://127.0.0.1:8080
-[2024-08-21T16:11:47Z INFO  wallet_as_service] Initializing in-memory database (Sled).
-[2024-08-21T16:11:48Z INFO  actix_server::builder] starting 8 workers                                                                              
-[2024-08-21T16:11:48Z INFO  actix_server::server] Actix runtime found; starting in Actix runtime
-[2024-08-21T16:11:48Z INFO  actix_server::server] starting service: "actix-web-service-127.0.0.1:8080", workers: 8, listening on: 127.0.0.1:8080
-[2024-08-21T16:11:51Z INFO  wallet_as_service::utils] Creating JSON response for key: key_id with value: 0a7dcc8d-52b8-4593-9332-c88fc528ac35
-[2024-08-21T16:11:51Z INFO  wallet_as_service::utils] Creating JSON response for key: signature with value: 0525775f713ee04a24752eb67544339b75e0846deb8b6a7034ac6dc3cd98c4ad76c7507fdee45de107fe5ddeefef2bda74254291e62630de94a811414d34e3ee
-``` 
-3. when the server started to run - execute `bash test_script.sh` in the second window and observe the following:
-```
-❯ bash test_script.sh 
-Generating a new key...
-Generated key_id: 0a7dcc8d-52b8-4593-9332-c88fc528ac35
-Signing the message...
-Generated signature: 0525775f713ee04a24752eb67544339b75e0846deb8b6a7034ac6dc3cd98c4ad76c7507fdee45de107fe5ddeefef2bda74254291e62630de94a811414d34e3ee
-Forgetting the key...
-Key successfully forgotten.
-Test completed successfully!
+3. Build the project:
+
+```bash
+cargo build --release --all
 ```
 
-## Ideas for Improvement
+## Usage
 
-**Enhanced Security:** Instead of a static Bearer Token, we might consider integrating OAuth2, JWT (JSON Web Tokens), or even mutual TLS for more secure authentication. While Sled is in-memory, we also might want to consider adding an encryption layer for stored data, especially if moving to persistent storage in production.
+### State Machine Manager
 
-**Scalability & Persistence:** Transition from an in-memory database to a persistent store like PostgreSQL or a distributed key-value store (e.g., Redis) will allow for scaling out the service and persisting keys across service restarts. 
+To start the state machine manager, which coordinates communication between parties:
 
-**Key Rotation & Expiry:** We also may implement key rotation policies and expiry mechanisms to ensure keys are not used indefinitely, enhancing security.
+```bash
+./target/release/gg20_sm_manager
+```
+By default, this will start the manager on `http://localhost:8000`.
 
-**Logging & Monitoring:** We need to enhance logging and implement tracing along with introduction of external monitoring tools like Prometheus, Jaeger, etc.
+### Key Generation
 
-**Performance Optimization + Profiling & Flame-charts:** We need to systematically review all multi-threaded, async, I/O-bound operations (e.g., database access, cryptographic operations) and ensure they are fully asynchronous to prevent blocking the Actix-Web threads. Implement load testing to identify and address performance bottlenecks. Profiling and flame-charts allow better insight into the service's runtime performance and user behavior.
+To generate keys for a party, use the `gg20_keygen` binary:
 
-**Deployment Considerations:** We also need to containerize the application using Docker to simplify deployment and ensure consistency across environments. CI/CD Pipeline shall be set up allowing continuous integration and delivery + automate testing, building, and deployment.
+```bash
+./target/release/gg20_keygen -t <threshold> -n <total_parties> -i <party_index> --output <output_path>
+```
 
-**Improving the Secure Key Handling:** For high-security environments we might consider integrating with HSMs or using Rust libraries that interface with such modules for key generation and management. While zeroizing memory is critical, we also might consider additional safeguards like memory locking (using libraries like `mlock`) to prevent sensitive data from being swapped out to disk.
+This will generate a key share for party 1 in a 2-of-3 threshold scheme.
+
+### Signing
+
+To participate in a signing process, use the `gg20_signing` binary:
+
+```bash
+./target/release/gg20_signing -p <participating_parties> -d <data_to_sign> -l <local_share_path> --key <encryption_key> --nonce <encryption_nonce>
+```
+This will initiate or participate in a signing process for the message "Hello, World!" using parties 1 and 2.
+
+### Automation
+
+All the steps for starting SM, key generation and signing may be executed by the script:
+
+```bash
+bash ./test.sh
+
+```
+
+## Security Considerations
+
+- This implementation includes a Paillier key validator to prevent potential vulnerabilities related to maliciously crafted moduli.
+- Ensure that you use secure channels for communication between parties and the state machine manager in production environments.
+- Safeguard the encrypted local shares and their corresponding encryption keys and nonces.
+- Regularly update dependencies to incorporate security patches.
 
 ## Licenses & Vulnerabilities Checks
 
@@ -68,59 +96,79 @@ For better maintainability & safety the App dependencies are checked on every pu
 Before using these dependencies install them: `cargo install cargo-audit && cargo install --locked cargo-deny`
 
 The final audit result looks like this (warnings may be allowed in this respect):
-```
-wallet_as_service on  master [!+?] is  v0.1.0 via  v1.80.1 
-❯ cargo fmt -- --check && cargo audit && cargo deny check && cargo test                                                                                   
-    error[unlicensed]: ring = 0.16.20 is unlicensed
-  ┌─ registry+https://github.com/rust-lang/crates.io-index#ring@0.16.20:2:9
-  │                           
-2 │ name = "ring"                   
-  │         ━━━━ a valid license expression could not be retrieved for the crate
-3 │ version = "0.16.20"
-4 │ license = ""                                                                                        
-  │            ─ license expression was not specified         
-5 │ license-files = [
-6 │     { path = "/home/maksym/.cargo/registry/src/index.crates.io-6f17d22bba15001f/ring-0.16.20/LICENSE", hash = 0xbd0eed23, score = 0.66, license = "OpenSSL" },                                                                                       
-  │                                                                                                                                   ──── low confidence in the license text 
-  │                                                             
-  ├ ring v0.16.20                                                                                                                                  
-    └── wallet_as_service v0.1.0                                             
-      
-warning[duplicate]: found 2 duplicate entries for crate 'bitflags'                                                                                 
-   ┌─ /home/maksym/Desktop/wallet_as_service/Cargo.lock:22:1                                                                                       
-   │                                                                                                                                               
-22 │ ╭ bitflags 1.3.2 registry+https://github.com/rust-lang/crates.io-index                                                                        
-23 │ │ bitflags 2.6.0 registry+https://github.com/rust-lang/crates.io-index
-   │ ╰────────────────────────────────────────────────────────────────────┘ lock entries
-   │                                  
-   ├ bitflags v1.3.2
-     └── redox_syscall v0.2.16                      
-         └── parking_lot_core v0.8.6                           
-             └── parking_lot v0.11.2                                
-                 └── sled v0.34.7
-                     └── wallet_as_service v0.1.0   
-```
-and `carg-audit`
 
-```
-wallet_as_service on  master [!+?] is  v0.1.0 via  v1.80.1 
-❯ cargo audit
+```bash
+❯ cargo cargo audit
     Fetching advisory database from `https://github.com/RustSec/advisory-db.git`
-      Loaded 648 security advisories (from /home/maksym/.cargo/advisory-db)
+      Loaded 659 security advisories (from /home/maksym/.cargo/advisory-db)
     Updating crates.io index
-    Scanning Cargo.lock for vulnerabilities (190 crate dependencies)
-Crate:     secp256k1                
-Version:   0.21.3                             
-Warning:   unsound
-Title:     Unsound API in `secp256k1` allows use-after-free and invalid deallocation from safe code     
-Date:      2022-11-30                                         
-ID:        RUSTSEC-2022-0070
-URL:       https://rustsec.org/advisories/RUSTSEC-2022-0070                 
-Dependency tree:                                                                                      
-secp256k1 0.21.3
-└── wallet_as_service 0.1.0
-
-warning: 1 allowed warning found      
+    Scanning Cargo.lock for vulnerabilities (481 crate dependencies)
+Crate:     curve25519-dalek
+Version:   3.2.0
+Title:     Timing variability in `curve25519-dalek`'s `Scalar29::sub`/`Scalar52::sub`
+Date:      2024-06-18
+ID:        RUSTSEC-2024-0344
+URL:       https://rustsec.org/advisories/RUSTSEC-2024-0344
+Solution:  Upgrade to >=4.1.3
+Dependency tree:
+curve25519-dalek 3.2.0
+└── curv-kzen 0.9.0
+    ├── zk-paillier 0.4.3
+    │   ├── multi-party-ecdsa 0.8.1
+    │   │   └── kms_trial 0.1.0
+    │   └── kms_trial 0.1.0
+    ├── multi-party-ecdsa 0.8.1
+    ├── kzen-paillier 0.4.2
+    │   ├── zk-paillier 0.4.3
+    │   ├── multi-party-ecdsa 0.8.1
+    │   └── kms_trial 0.1.0
 ```
-I left these vulnerabilities on purpose to better demonstrate the CI/CD process steps and indicate steps for improvement.
+and 
 
+```bash
+❯ cargo deny check           
+warning[duplicate]: found 2 duplicate entries for crate 'aead'
+  ┌─ /home/maksym/Desktop/trial/kms_trial/Cargo.lock:3:1                                    
+  │                                                         
+3 │ ╭ aead 0.3.2 registry+https://github.com/rust-lang/crates.io-index
+4 │ │ aead 0.4.3 registry+https://github.com/rust-lang/crates.io-index  
+  │ ╰────────────────────────────────────────────────────────────────┘ lock entries                     
+  │  
+  ├ aead v0.3.2            
+    └── aes-gcm v0.8.0                                          
+        └── cookie v0.14.4                                  
+            └── http-types v2.12.0                                      
+                ├── async-sse v5.1.0                                  
+                │   └── kms_trial v0.1.0                     
+                ├── http-client v6.5.3
+                │   └── surf v2.3.2                                                 
+                │       └── kms_trial v0.1.0 (*)                                     
+                └── surf v2.3.2 (*)                                              
+  ├ aead v0.4.3
+    └── aes-gcm v0.9.4                                                           
+        └── kms_trial v0.1.0        
+```
+
+## Ideas for Improvement
+
+1. Enhanced Paillier modulus validation
+2. Integration with hardware security modules (HSMs)
+3. Support for additional cryptographic schemes
+4. User-friendly interfaces for key management
+
+## Contributing
+
+Contributions to this project are welcome. Please follow these steps:
+
+1. Fork the repository
+2. Create a new branch for your feature or bug fix
+3. Make your changes and write tests if applicable
+4. Submit a pull request with a clear description of your changes
+
+## License
+
+MIT
+
+---
+
+For more detailed information on each component, please refer to the individual source files and comments within the code.
